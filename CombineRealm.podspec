@@ -1,42 +1,30 @@
-#
-# Be sure to run `pod lib lint CombineRealm.podspec' to ensure this is a
-# valid spec before submitting.
-#
-# Any lines starting with a # are optional, but their use is encouraged
-# To learn more about a Podspec see https://guides.cocoapods.org/syntax/podspec.html
-#
-
 Pod::Spec.new do |s|
-  s.name             = 'CombineRealm'
-  s.version          = '0.1.0'
-  s.summary          = 'A short description of CombineRealm.'
 
-# This description is used to generate tags and improve search results.
-#   * Think: What does it do? Why did you write it? What is the focus?
-#   * Try to keep it short, snappy and to the point.
-#   * Write the description between the DESC delimiters below.
-#   * Finally, don't worry about the indent, CocoaPods strips it!
+  s.name             = "CombineRealm"
+  s.version          = "1.0.0"
+  s.summary          = "A Combine wrapper of Realm's notifications and write bindings"
+  s.swift_version    = "5.0"
 
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+    This is a Combine extension that provides an easy and straight-forward way
+    to use Realm's natively reactive collection type as a Publisher
                        DESC
 
-  s.homepage         = 'https://github.com/bitomule/CombineRealm'
-  # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
-  s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'bitomule' => 'bitomule@gmail.com' }
-  s.source           = { :git => 'https://github.com/bitomule/CombineRealm.git', :tag => s.version.to_s }
-  # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
+  s.homepage         = "https://github.com/bitomule/CombineRealm"
+  s.license          = 'MIT'
+  s.author           = { "David Collado" => "bitomule@gmail.com" }
+  s.source           = { :git => "https://github.com/bitomule/CombineRealm.git", :tag => s.version.to_s }
 
-  s.ios.deployment_target = '8.0'
+  s.requires_arc = true
 
-  s.source_files = 'CombineRealm/Classes/**/*'
-  
-  # s.resource_bundles = {
-  #   'CombineRealm' => ['CombineRealm/Assets/*.png']
-  # }
+  s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '10.15'
+  s.tvos.deployment_target = '13.0'
+  s.watchos.deployment_target = '6.0'
 
-  # s.public_header_files = 'Pod/Classes/**/*.h'
-  # s.frameworks = 'UIKit', 'MapKit'
-  # s.dependency 'AFNetworking', '~> 2.3'
+  s.source_files = 'Pod/Classes/*.swift'
+
+  s.frameworks = 'Foundation'
+  s.dependency 'RealmSwift', '~> 3.14'
+
 end
