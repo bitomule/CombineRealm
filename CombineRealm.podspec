@@ -22,7 +22,7 @@ Pod::Spec.new do |s|
   s.tvos.deployment_target = '13.0'
   s.watchos.deployment_target = '6.0'
 
-  s.source_files = 'Pod/Classes/*.swift'
+  s.source_files = 'Sources/Classes/*.swift'
 
   s.frameworks = 'Foundation'
   s.dependency 'RealmSwift', '~> 3.14'
