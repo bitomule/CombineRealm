@@ -1,0 +1,6 @@
+use_frameworks!
+target 'CombineRealm_Tests' do
+  pod 'CombineRealm', :path => '../'
+  
+  
+end

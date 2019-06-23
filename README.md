@@ -1,0 +1,29 @@
+# CombineRealm
+
+[![CI Status](https://img.shields.io/travis/bitomule/CombineRealm.svg?style=flat)](https://travis-ci.org/bitomule/CombineRealm)
+[![Version](https://img.shields.io/cocoapods/v/CombineRealm.svg?style=flat)](https://cocoapods.org/pods/CombineRealm)
+[![License](https://img.shields.io/cocoapods/l/CombineRealm.svg?style=flat)](https://cocoapods.org/pods/CombineRealm)
+[![Platform](https://img.shields.io/cocoapods/p/CombineRealm.svg?style=flat)](https://cocoapods.org/pods/CombineRealm)
+
+## Example
+
+To run the example project, clone the repo, and run `pod install` from the Example directory first.
+
+## Requirements
+
+## Installation
+
+CombineRealm is available through [CocoaPods](https://cocoapods.org). To install
+it, simply add the following line to your Podfile:
+
+```ruby
+pod 'CombineRealm'
+```
+
+## Author
+
+bitomule, bitomule@gmail.com
+
+## License
+
+CombineRealm is available under the MIT license. See the LICENSE file for more info.
