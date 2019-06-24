@@ -5,20 +5,32 @@
 [![License](https://img.shields.io/cocoapods/l/CombineRealm.svg?style=flat)](https://cocoapods.org/pods/CombineRealm)
 [![Platform](https://img.shields.io/cocoapods/p/CombineRealm.svg?style=flat)](https://cocoapods.org/pods/CombineRealm)
 
-## Example
+This library is a thin wrapper around __RealmSwift__ ( [Realm Docs](https://realm.io/docs/swift/latest/) ) heavily based on the amazing job on [RxRealm](https://github.com/RxSwiftCommunity/RxRealm)
 
-To run the example project, clone the repo, and run `pod install` from the Example directory first.
-
-## Requirements
+It is a *WORK IN PROGRESS*, not ready for *PRODUCTION*.
 
 ## Installation
 
-CombineRealm is available through [CocoaPods](https://cocoapods.org). To install
-it, simply add the following line to your Podfile:
+This library depends on both __RxSwift__ and __RealmSwift__ 1.0+.
+
+#### CocoaPods
+
+CombineRealm requires CocoaPods 1.1.x or higher.
+
+CombineRealm is available through [CocoaPods](http://cocoapods.org). To install it, simply add the following line to your Podfile:
 
 ```ruby
-pod 'CombineRealm'
+pod "CombineRealm"
 ```
+
+## TODO
+
+* Carthage
+* SPM (Support from realm still pending)
+* Test
+* Handle errors when type does not match publisher type
+* Add helpers to observe object changes
+* Add Realm operations (add, update, delete...)
 
 ## Author
 
