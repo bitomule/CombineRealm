@@ -9,8 +9,24 @@ This library is a thin wrapper around __RealmSwift__ ( [Realm Docs](https://real
 
 It is a *WORK IN PROGRESS*, not ready for *PRODUCTION*.
 
+## Installation
+
+This library depends on both __RxSwift__ and __RealmSwift__ 1.0+.
+
+#### CocoaPods
+
+CombineRealm requires CocoaPods 1.1.x or higher.
+
+CombineRealm is available through [CocoaPods](http://cocoapods.org). To install it, simply add the following line to your Podfile:
+
+```ruby
+pod "CombineRealm"
+```
+
 ## TODO
 
+* Carthage
+* SPM (Support from realm still pending)
 * Test
 * Handle errors when type does not match publisher type
 * Add helpers to observe object changes
