@@ -11,7 +11,7 @@ It is a *WORK IN PROGRESS*, not ready for *PRODUCTION*.
 
 ## Installation
 
-This library depends on both __RxSwift__ and __RealmSwift__ 1.0+.
+This library depends on __RealmSwift__ 1.0+.
 
 #### CocoaPods
 
