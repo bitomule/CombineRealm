@@ -24,7 +24,7 @@ Pod::Spec.new do |s|
 
   s.source_files = 'Sources/Classes/*.swift'
 
-  s.frameworks = 'Foundation'
+  s.frameworks = 'Combine'
   s.dependency 'RealmSwift', '~> 3.14'
 
 end
