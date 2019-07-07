@@ -134,7 +134,11 @@ struct RealmPublisher<Output, Failure: Swift.Error>: Publisher {
     }
 }
 
-public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.Error {
+public struct RealmError: Swift.Error {
+    let underlyingError: Swift.Error
+}
+
+public extension AnyPublisher where Output: NotificationEmitter {
     /**
      Returns an `AnyPublisher<Output, Failure>` that emits each time the collection data changes.
      The observable emits an initial value upon subscription.
@@ -145,8 +149,8 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      - returns: `AnyPublisher<Output, Failure>`, e.g. when called on `Results<Model>` it will return `AnyPublisher<Results<Model>>`, on a `List<User>` it will return `AnyPublisher<List<User>>`, etc.
      */
     static func collection(from collection: Output, synchronousStart: Bool)
-        -> AnyPublisher<Output, Failure> {
-            return RealmPublisher<Output, Failure>.init { subscriber  in
+        -> AnyPublisher<Output, RealmError> {
+            return RealmPublisher<Output, RealmError>.init { subscriber  in
                 return collection.observe { changeset in
                     let value: Output
                     switch changeset {
@@ -157,12 +161,9 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
                     case .update(let latestValue, _, _, _):
                         value = latestValue
 
-                    case let .error(error as Failure):
-                        subscriber.receive(completion: Subscribers.Completion.failure(error))
-                        return
                     case let .error(error):
-                        // TODO: - Handle error
-                        fatalError("Unimplemented error handling")
+                        subscriber.receive(completion: Subscribers.Completion.failure(RealmError(underlyingError: error)))
+                        return
                     }
                     _ = subscriber.receive(value)
                 }
@@ -179,7 +180,7 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      - returns: `AnyPublisher<Array<Element.Element>>`, e.g. when called on `Results<Model>` it will return `AnyPublisher<Array<Model>>`, on a `List<User>` it will return `AnyPublisher<Array<User>>`, etc.
      */
     static func array(from collection: Output, synchronousStart: Bool = true)
-        -> AnyPublisher<Array<Output.ElementType>, Failure> {
+        -> AnyPublisher<Array<Output.ElementType>, RealmError> {
             return AnyPublisher.collection(from: collection, synchronousStart: synchronousStart)
                 .map { $0.toArray() }
                 .eraseToAnyPublisher()
@@ -199,8 +200,8 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      - returns: `AnyPublisher<(RealmChangesetPublisher<Element.Element>, RealmChangeset?)>`
      */
     static func changeset(from collection: Output, synchronousStart: Bool = true)
-        -> AnyPublisher<(AnyRealmCollection<Output.ElementType>, RealmChangeset?), Failure> {
-            return RealmPublisher<(AnyRealmCollection<Output.ElementType>, RealmChangeset?), Failure>.init { subscriber  in
+        -> AnyPublisher<(AnyRealmCollection<Output.ElementType>, RealmChangeset?), RealmError> {
+            return RealmPublisher<(AnyRealmCollection<Output.ElementType>, RealmChangeset?), RealmError>.init { subscriber  in
                 return collection.toAnyCollection().observe { changeset in
                     switch changeset {
                     case let .initial(value):
@@ -208,12 +209,9 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
                         _ = subscriber.receive((value, nil))
                     case let .update(value, deletes, inserts, updates):
                         _ = subscriber.receive((value, RealmChangeset(deleted: deletes, inserted: inserts, updated: updates)))
-                    case let .error(error as Failure):
-                        subscriber.receive(completion: Subscribers.Completion.failure(error))
-                        return
                     case let .error(error):
-                        // TODO: - Handle error
-                        fatalError("Unimplemented error handling")
+                        subscriber.receive(completion: Subscribers.Completion.failure(RealmError(underlyingError: error)))
+                        return
                     }
                 }
             }.eraseToAnyPublisher()
@@ -234,14 +232,14 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      - returns: `AnyPublisher<(Array<Element.Element>, RealmChangeset?)>`
      */
     static func arrayWithChangeset(from collection: Output, synchronousStart: Bool = true)
-        -> AnyPublisher<([Output.ElementType], RealmChangeset?), Failure> {
+        -> AnyPublisher<([Output.ElementType], RealmChangeset?), RealmError> {
             return Self.changeset(from: collection)
                 .map { ($0.toArray(), $1) }
                 .eraseToAnyPublisher()
     }
 }
 
-public extension AnyPublisher where Failure: Swift.Error {
+public extension AnyPublisher {
 
     /**
      Returns an `AnyPublisher<(Realm, Realm.Notification)>` that emits each time the Realm emits a notification.
