@@ -99,13 +99,123 @@ public struct RealmChangeset {
     public let updated: [Int]
 }
 
-extension Publisher {
-    func onDispose(_ onDispose: @escaping () -> Void) -> AnyPublisher<Output, Failure> {
-        return self.handleEvents(receiveCompletion: { _ in
-            onDispose()
-        }, receiveCancel: {
-            onDispose()
-        }).eraseToAnyPublisher()
+public final class RealmCollectionSubscription<SubscriberType: Subscriber, Input: NotificationEmitter>: Subscription where SubscriberType.Input == Input {
+    private var subscriber: SubscriberType?
+    private let token: NotificationToken
+
+    init(subscriber: SubscriberType, collection: Input, synchronousStart: Bool) {
+        self.subscriber = subscriber
+        token = collection.observe { changeset in
+            let value: Input
+            switch changeset {
+            case let .initial(latestValue):
+                guard !synchronousStart else { return }
+                value = latestValue
+
+            case .update(let latestValue, _, _, _):
+                value = latestValue
+
+            case let .error(error as SubscriberType.Failure):
+                subscriber.receive(completion: Subscribers.Completion.failure(error))
+                return
+            case let .error(error):
+                // TODO: - Handle error
+                fatalError("Unimplemented error handling")
+            }
+            _ = subscriber.receive(value)
+        }
+    }
+
+    public func request(_ demand: Subscribers.Demand) {
+        // We do nothing here as we only want to send events when they occur.
+        // See, for more info: https://developer.apple.com/documentation/combine/subscribers/demand
+    }
+
+    public func cancel() {
+        token.invalidate()
+        subscriber = nil
+    }
+}
+
+/// A custom `Publisher` to work with our custom `UIControlSubscription`.
+public struct RealmCollectionPublisher<Output: NotificationEmitter, Failure: Swift.Error>: Publisher {
+    public typealias Output = Output
+    public typealias Failure = Failure
+
+    private let emitter: Output
+    private let synchronousStart: Bool
+
+    init(emitter: Output, synchronousStart: Bool = true) {
+        self.emitter = emitter
+        self.synchronousStart = synchronousStart
+    }
+
+    /// This function is called to attach the specified `Subscriber` to this `Publisher` by `subscribe(_:)`
+    ///
+    /// - SeeAlso: `subscribe(_:)`
+    /// - Parameters:
+    ///     - subscriber: The subscriber to attach to this `Publisher`.
+    ///                   once attached it can begin to receive values.
+    public func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Failure, S.Input == Output {
+        subscriber.receive(subscription: RealmCollectionSubscription(subscriber: subscriber, collection: emitter, synchronousStart: synchronousStart))
+    }
+}
+
+public final class RealmChangesetSubscription<SubscriberType: Subscriber, Input: NotificationEmitter>: Subscription where SubscriberType.Input == (AnyRealmCollection<Input.ElementType>, RealmChangeset?) {
+    private var subscriber: SubscriberType?
+    private let token: NotificationToken
+
+    init(subscriber: SubscriberType, collection: Input, synchronousStart: Bool) {
+        self.subscriber = subscriber
+        token = collection.toAnyCollection().observe { changeset in
+            switch changeset {
+            case let .initial(value):
+                guard !synchronousStart else { return }
+                _ = subscriber.receive((value, nil))
+            case let .update(value, deletes, inserts, updates):
+                _ = subscriber.receive((value, RealmChangeset(deleted: deletes, inserted: inserts, updated: updates)))
+            case let .error(error as SubscriberType.Failure):
+                subscriber.receive(completion: Subscribers.Completion.failure(error))
+                return
+            case let .error(error):
+                // TODO: - Handle error
+                fatalError("Unimplemented error handling")
+            }
+        }
+    }
+
+    public func request(_ demand: Subscribers.Demand) {
+        // We do nothing here as we only want to send events when they occur.
+        // See, for more info: https://developer.apple.com/documentation/combine/subscribers/demand
+    }
+
+    public func cancel() {
+        token.invalidate()
+        subscriber = nil
+    }
+}
+
+/// A custom `Publisher` to work with our custom `UIControlSubscription`.
+public struct RealmChangesetPublisher<Emitter:NotificationEmitter, Failure: Swift.Error>: Publisher {
+    public typealias Output = (AnyRealmCollection<Emitter.ElementType>, RealmChangeset?)
+    public typealias Failure = Failure
+
+    private let emitter: Emitter
+    private let synchronousStart: Bool
+
+    init(emitter: Emitter, synchronousStart: Bool = true) {
+        self.emitter = emitter
+        self.synchronousStart = synchronousStart
+    }
+
+    /// This function is called to attach the specified `Subscriber` to this `Publisher` by `subscribe(_:)`
+    ///
+    /// - SeeAlso: `subscribe(_:)`
+    /// - Parameters:
+    ///     - subscriber: The subscriber to attach to this `Publisher`.
+    ///                   once attached it can begin to receive values.
+    public func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Failure, S.Input == Output {
+        subscriber.receive(subscription: RealmChangesetSubscription(subscriber: subscriber, collection: emitter, synchronousStart: synchronousStart))
     }
 }
 
@@ -121,34 +231,7 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      */
     static func collection(from collection: Output, synchronousStart: Bool)
         -> AnyPublisher<Output, Failure> {
-            var token: NotificationToken?
-            return AnyPublisher<Output, Failure> { subscriber in
-                if synchronousStart {
-                    _ = subscriber.receive(collection)
-                }
-                token = collection.observe { changeset in
-                    let value: Output
-                    switch changeset {
-                    case let .initial(latestValue):
-                        guard !synchronousStart else { return }
-                        value = latestValue
-
-                    case .update(let latestValue, _, _, _):
-                        value = latestValue
-
-                    case let .error(error as Failure):
-                        subscriber.receive(completion: Subscribers.Completion.failure(error))
-                        return
-                    case let .error(error):
-                        // TODO: - Handle error
-                        fatalError("Unimplemented error handling")
-                    }
-                    _ = subscriber.receive(value)
-                }
-            }
-            .onDispose {
-                token?.invalidate()
-            }
+            return RealmCollectionPublisher<Output, Failure>(emitter: collection).eraseToAnyPublisher()
     }
 
     /**
@@ -162,7 +245,7 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      */
     static func array(from collection: Output, synchronousStart: Bool = true)
         -> AnyPublisher<Array<Output.ElementType>, Failure> {
-            return AnyPublisher<Output, Failure>.collection(from: collection, synchronousStart: synchronousStart)
+            return RealmCollectionPublisher<Output, Failure>(emitter: collection, synchronousStart: synchronousStart)
                 .map { $0.toArray() }
                 .eraseToAnyPublisher()
     }
@@ -178,36 +261,11 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
      - parameter from: A Realm collection of type `Element`: either `Results`, `List`, `LinkingObjects` or `AnyRealmCollection`.
      - parameter synchronousStart: whether the resulting Publisher should emit its first element synchronously (e.g. better for UI bindings)
 
-     - returns: `AnyPublisher<(AnyRealmCollection<Element.Element>, RealmChangeset?)>`
+     - returns: `RealmChangesetPublisher<(RealmChangesetPublisher<Element.Element>, RealmChangeset?)>`
      */
     static func changeset(from collection: Output, synchronousStart: Bool = true)
         -> AnyPublisher<(AnyRealmCollection<Output.ElementType>, RealmChangeset?), Failure> {
-            var token: NotificationToken?
-            return AnyPublisher<(AnyRealmCollection<Output.ElementType>, RealmChangeset?), Failure> { subscriber in
-                if synchronousStart {
-                    _ = subscriber.receive((collection.toAnyCollection(), nil))
-                }
-
-                token = collection.toAnyCollection().observe { changeset in
-
-                    switch changeset {
-                    case let .initial(value):
-                        guard !synchronousStart else { return }
-                        _ = subscriber.receive((value, nil))
-                    case let .update(value, deletes, inserts, updates):
-                        _ = subscriber.receive((value, RealmChangeset(deleted: deletes, inserted: inserts, updated: updates)))
-                    case let .error(error as Failure):
-                        subscriber.receive(completion: Subscribers.Completion.failure(error))
-                        return
-                    case let .error(error):
-                        // TODO: - Handle error
-                        fatalError("Unimplemented error handling")
-                    }
-                }
-            }
-            .onDispose {
-                token?.invalidate()
-            }
+            return RealmChangesetPublisher<Output, Failure>(emitter: collection, synchronousStart: synchronousStart).eraseToAnyPublisher()
     }
 
     /**
@@ -232,7 +290,7 @@ public extension AnyPublisher where Output: NotificationEmitter, Failure: Swift.
     }
 }
 
-public extension AnyPublisher {
+public extension AnyPublisher where Failure: Swift.Error {
 
     /**
      Returns an `AnyPublisher<(Realm, Realm.Notification)>` that emits each time the Realm emits a notification.
@@ -248,16 +306,46 @@ public extension AnyPublisher {
      - parameter realm: A Realm instance
      - returns: `AnyPublisher<(Realm, Realm.Notification)>`, which you can subscribe to
      */
-    static func from(realm: Realm) -> AnyPublisher<(Realm, Realm.Notification), Swift.Error> {
-        var token: NotificationToken?
-        return AnyPublisher<(Realm, Realm.Notification), Swift.Error>.init { subscriber in
-            token = realm.observe { (notification: Realm.Notification, realm: Realm) in
-                _ = subscriber.receive((realm, notification))
-                _ = subscriber.receive(completion: Subscribers.Completion.finished)
-            }
+    static func from(realm: Realm) -> AnyPublisher<(Realm, Realm.Notification), Failure> {
+        return RealmPublisher<Failure>(realm: realm).eraseToAnyPublisher()
+    }
+}
+
+public final class RealmSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (Realm, Realm.Notification) {
+    private var subscriber: SubscriberType?
+    private let token: NotificationToken
+
+    init(subscriber: SubscriberType, realm: Realm) {
+        self.subscriber = subscriber
+        token = realm.observe { (notification: Realm.Notification, realm: Realm) in
+            _ = subscriber.receive((realm, notification))
+            _ = subscriber.receive(completion: Subscribers.Completion.finished)
         }
-        .onDispose {
-            token?.invalidate()
-        }
+    }
+
+    public func request(_ demand: Subscribers.Demand) {
+        // We do nothing here as we only want to send events when they occur.
+        // See, for more info: https://developer.apple.com/documentation/combine/subscribers/demand
+    }
+
+    public func cancel() {
+        token.invalidate()
+        subscriber = nil
+    }
+}
+
+/// A custom `Publisher` to work with our custom `UIControlSubscription`.
+public struct RealmPublisher<Failure: Swift.Error>: Publisher {
+    public typealias Output = (Realm, Realm.Notification)
+    public typealias Failure = Failure
+
+    private let realm: Realm
+
+    init(realm: Realm) {
+        self.realm = realm
+    }
+
+    public func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Failure, S.Input == Output {
+        subscriber.receive(subscription: RealmSubscription(subscriber: subscriber, realm: realm))
     }
 }
