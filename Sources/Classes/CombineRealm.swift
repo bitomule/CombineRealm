@@ -155,7 +155,7 @@ public extension AnyPublisher where Output: NotificationEmitter {
                     let value: Output
                     switch changeset {
                     case let .initial(latestValue):
-                        guard !synchronousStart else { return }
+                        guard synchronousStart else { return }
                         value = latestValue
 
                     case .update(let latestValue, _, _, _):
@@ -205,7 +205,7 @@ public extension AnyPublisher where Output: NotificationEmitter {
                 return collection.toAnyCollection().observe { changeset in
                     switch changeset {
                     case let .initial(value):
-                        guard !synchronousStart else { return }
+                        guard synchronousStart else { return }
                         _ = subscriber.receive((value, nil))
                     case let .update(value, deletes, inserts, updates):
                         _ = subscriber.receive((value, RealmChangeset(deleted: deletes, inserted: inserts, updated: updates)))
